@@ -1,0 +1,35 @@
+# For more details, see https://docs.github.com/en/actions
+name: Build and push docker image
+
+# Controls when the workflow will run
+on:
+  workflow_dispatch:
+    inputs:
+      ubuntu_version:
+        description: 'Ubuntu version'
+        required: true
+        default: '22.04'
+        type: choice
+        options:
+        - '22.04'
+        - '20.04'
+      platforms:
+        description: 'Host platforms'
+        required: true
+        default: 'linux/amd64'
+        type: choice
+        options:
+        - 'linux/amd64'
+        - 'linux/arm64'
+        - 'linux/amd64,linux/arm64'
+
+
+# For more details, see https://docs.github.com/en/actions/using-workflows/reusing-workflows
+jobs:
+  reusable_workflow_job:
+    name: ${{ github.ref_name }}
+    uses: zhuoqiw/docker-build-push/.github/workflows/main.yml@master
+    with:
+      ubuntu_version: ${{ inputs.ubuntu_version }}
+      platforms: ${{ inputs.platforms }}
+    secrets: inherit
