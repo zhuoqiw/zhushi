@@ -52,8 +52,8 @@ jobs:
             UBUNTU_VERSION=${{ inputs.ubuntu_version }}
             ROS_DISTRO=galactic
           tags: |
-            ${{ inputs.image_name }}:${{ inputs.image_tag }}-${{ inputs.ubuntu_version }}
-            ${{ inputs.image_name }}:latest
+            ${{ github.repository }}:${{ inputs.ubuntu_version }}
+            ${{ github.repository }}:latest
       -
         name: Build and push on 22.04
         if: ${{ inputs.ubuntu_version == '22.04' }}
@@ -65,5 +65,5 @@ jobs:
             UBUNTU_VERSION=${{ inputs.ubuntu_version }}
             ROS_DISTRO=humble
           tags: |
-            ${{ inputs.image_name }}:${{ inputs.image_tag }}-${{ inputs.ubuntu_version }}
-            ${{ inputs.image_name }}:latest
+            ${{ github.repository }}:${{ inputs.ubuntu_version }}
+            ${{ github.repository }}:latest
