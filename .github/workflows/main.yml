@@ -5,7 +5,7 @@ name: Build and push docker image
 on:
   workflow_dispatch:
     inputs:
-      version:
+      ubuntu_version:
         description: 'Ubuntu version'
         required: true
         default: '22.04'
@@ -13,7 +13,7 @@ on:
         options:
         - '22.04'
         - '20.04'
-      plats:
+      platforms:
         description: 'Host platforms'
         required: true
         default: 'linux/amd64'
@@ -23,12 +23,47 @@ on:
         - 'linux/arm64'
         - 'linux/amd64,linux/arm64'
 
-# For more details, see https://docs.github.com/en/actions/using-workflows/reusing-workflows
+# For more details, see https://github.com/docker/build-push-action
 jobs:
-  reusable_workflow_job:
-    name: ${{ github.ref_name }}
-    uses: zhuoqiw/docker-build-push/.github/workflows/main.yml@master
-    with:
-      ubuntu_version: ${{ inputs.version }}
-      platforms: ${{ inputs.plats }}
-    secrets: inherit
+  build-push:
+    name: ${{ inputs.ubuntu_version }} / ${{ inputs.platforms }}
+    runs-on: ubuntu-${{ inputs.ubuntu_version }}
+    steps:
+      -
+        name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      -
+        name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_HUB_USER_NAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      -
+        name: Build and push on 20.04
+        if: ${{ inputs.ubuntu_version == '20.04' }}
+        uses: docker/build-push-action@v3
+        with:
+          push: true
+          platforms: ${{ inputs.platforms }}
+          build-args: |
+            UBUNTU_VERSION=${{ inputs.ubuntu_version }}
+            ROS_DISTRO=galactic
+          tags: |
+            ${{ inputs.image_name }}:${{ inputs.image_tag }}-${{ inputs.ubuntu_version }}
+            ${{ inputs.image_name }}:latest
+      -
+        name: Build and push on 22.04
+        if: ${{ inputs.ubuntu_version == '22.04' }}
+        uses: docker/build-push-action@v3
+        with:
+          push: true
+          platforms: ${{ inputs.platforms }}
+          build-args: |
+            UBUNTU_VERSION=${{ inputs.ubuntu_version }}
+            ROS_DISTRO=humble
+          tags: |
+            ${{ inputs.image_name }}:${{ inputs.image_tag }}-${{ inputs.ubuntu_version }}
+            ${{ inputs.image_name }}:latest
