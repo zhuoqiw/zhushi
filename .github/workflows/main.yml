@@ -5,7 +5,7 @@ name: Build and push docker image
 on:
   workflow_dispatch:
     inputs:
-      ubuntu_version:
+      version:
         description: 'Ubuntu version'
         required: true
         default: '22.04'
@@ -13,7 +13,7 @@ on:
         options:
         - '22.04'
         - '20.04'
-      platforms:
+      plats:
         description: 'Host platforms'
         required: true
         default: 'linux/amd64'
@@ -23,13 +23,12 @@ on:
         - 'linux/arm64'
         - 'linux/amd64,linux/arm64'
 
-
 # For more details, see https://docs.github.com/en/actions/using-workflows/reusing-workflows
 jobs:
   reusable_workflow_job:
     name: ${{ github.ref_name }}
     uses: zhuoqiw/docker-build-push/.github/workflows/main.yml@master
     with:
-      ubuntu_version: ${{ inputs.ubuntu_version }}
-      platforms: ${{ inputs.platforms }}
+      ubuntu_version: ${{ inputs.version }}
+      platforms: ${{ inputs.plats }}
     secrets: inherit
