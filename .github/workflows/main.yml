@@ -31,5 +31,4 @@ jobs:
     with:
       ubuntu_version: ${{ github.event.inputs.ubuntu_version }}
       platforms: ${{ github.event.inputs.platforms }}
-      image_target: base
     secrets: inherit

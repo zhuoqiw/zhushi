@@ -13,7 +13,7 @@ FROM zhuoqiw/ros-pylon:6.2.0-${UBUNTU_VERSION} AS pylon
 # Base image
 FROM ros:${ROS_DISTRO} AS base
 
-# Copy from open
+# Copy from opencv
 COPY --from=opencv /setup /
 
 # Copy from pylon
