@@ -5,6 +5,7 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "/opt/ros/humble/include",
+                "/opt/ros/humble/include/rclcpp",
                 "/opt/opencv/include/opencv4",
                 "/opt/pylon/include"
             ],
