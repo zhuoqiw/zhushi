@@ -35,8 +35,8 @@ public:
   /**
    * @brief Construct a new Gpio Raspberry object.
    * Open gpiochip0.
-   * Get line 26 for laser.
-   * Get line 6 for led.
+   * Get line 4 for laser.
+   * Get line 17 for trigger.
    * Set laser off.
    * Set led on.
    *
@@ -71,13 +71,13 @@ private:
    * @brief The handle to gpio line 26.
    *
    */
-  std::unique_ptr<gpiod_line, void (*)(gpiod_line *)> _line_26;
+  std::unique_ptr<gpiod_line, void (*)(gpiod_line *)> _line_4;
 
   /**
    * @brief The handle to gpio line 22.
    *
    */
-  std::unique_ptr<gpiod_line, void (*)(gpiod_line *)> _line_22;
+  std::unique_ptr<gpiod_line, void (*)(gpiod_line *)> _line_17;
 
   /**
    * @brief ROS parameter callback handle.
