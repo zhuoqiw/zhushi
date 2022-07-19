@@ -26,7 +26,7 @@ COPY --from=opencv /setup /
 COPY --from=pylon /setup /
 
 # Copy source
-COPY src /ws
+COPY --chown=ros:ros src /home/ros/ws/src/
 
 # Setup environment
 ENV PYLON_ROOT=/opt/pylon
