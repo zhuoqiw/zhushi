@@ -24,6 +24,8 @@ namespace gpio_raspberry
 using rcl_interfaces::msg::ParameterDescriptor;
 using rcl_interfaces::msg::SetParametersResult;
 
+using namespace std::chrono_literals;
+
 GpioRaspberry::GpioRaspberry(const rclcpp::NodeOptions & options)
 : Node("gpio_raspberry_node", options),
   _chip(gpiod_chip_open_by_name("gpiochip0"), gpiod_chip_close),
@@ -70,10 +72,21 @@ GpioRaspberry::~GpioRaspberry()
 int GpioRaspberry::_laser(bool f)
 {
   if (f) {
-    return gpiod_line_set_value(_line_4.get(), 1);
+    _timer = this->create_wall_timer(500ms, [this]() {_callback();});
+    // return gpiod_line_set_value(_line_4.get(), 1);
   } else {
-    return gpiod_line_set_value(_line_4.get(), 0);
+    // return gpiod_line_set_value(_line_4.get(), 0);
+    _timer.reset();
   }
+
+  return 0;
+}
+
+void GpioRaspberry::_callback()
+{
+  static bool f = false;
+  gpiod_line_set_value(_line_4.get(), f);
+  f = !f;
 }
 
 }  // namespace gpio_raspberry

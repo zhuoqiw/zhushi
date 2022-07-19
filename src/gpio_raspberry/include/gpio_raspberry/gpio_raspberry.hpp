@@ -18,6 +18,7 @@
 #include <memory>
 
 #include "rclcpp/rclcpp.hpp"
+#include "rclcpp/timer.hpp"
 
 struct gpiod_chip;
 struct gpiod_line;
@@ -61,6 +62,8 @@ private:
    */
   int _laser(bool f);
 
+  void _callback();
+
   /**
    * @brief The handle to gpio chip.
    *
@@ -84,6 +87,8 @@ private:
    *
    */
   OnSetParametersCallbackHandle::SharedPtr _handle;
+
+  rclcpp::TimerBase::SharedPtr _timer;
 };
 
 }  // namespace gpio_raspberry

@@ -25,6 +25,9 @@ COPY --from=opencv /setup /
 # Copy from pylon
 COPY --from=pylon /setup /
 
+# Copy source
+COPY src /ws
+
 # Setup environment
 ENV PYLON_ROOT=/opt/pylon
 
