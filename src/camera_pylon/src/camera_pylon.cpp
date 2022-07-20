@@ -15,9 +15,12 @@
 #include "camera_pylon/camera_pylon.hpp"
 
 #include <memory>
+#include <pylon/PylonIncludes.h>
 
 namespace camera_pylon
 {
+
+using namespace Pylon;
 
 // class CameraPylon::_Impl
 // {
@@ -39,6 +42,17 @@ CameraPylon::CameraPylon(const rclcpp::NodeOptions & options)
 : Node("camera_pylon_node", options)
 {
   // _init = std::thread(&CameraPylon::_Init, this);
+  PylonInitialize();
+  CTlFactory& TlFactory = CTlFactory::GetInstance();
+  CDeviceInfo dL, dR;
+  dL.SetSerialNumber("40146410");
+  dL.SetDeviceClass(BaslerUsbDeviceClass);
+  dR.SetSerialNumber("40146429");
+  dR.SetDeviceClass(BaslerUsbDeviceClass);
+  CInstantCamera camL(TlFactory.CreateDevice(dL));
+  CInstantCamera camR(TlFactory.CreateDevice(dR));
+
+  RCLCPP_INFO(this->get_logger(), "Initialized successfully");
 }
 
 CameraPylon::~CameraPylon()
@@ -49,6 +63,7 @@ CameraPylon::~CameraPylon()
   // _sub.reset();
   // _impl.reset();
   // _pub.reset();
+  PylonTerminate();
 
   RCLCPP_INFO(this->get_logger(), "Destroyed successfully");
 }
