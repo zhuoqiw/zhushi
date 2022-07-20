@@ -89,7 +89,7 @@ int GpioRaspberry::_laser(bool f)
 
 void GpioRaspberry::_callback()
 {
-  static bool f = false;
+  static bool f = true;
   static int count = 0;
   gpiod_line_set_value(_line_4.get(), f);
   f = !f;
