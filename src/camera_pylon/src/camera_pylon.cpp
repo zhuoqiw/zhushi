@@ -21,6 +21,38 @@ namespace camera_pylon
 {
 
 using namespace Pylon;
+using rcl_interfaces::msg::ParameterDescriptor;
+using rcl_interfaces::msg::SetParametersResult;
+
+class CImageEventPrinter : public CImageEventHandler
+{
+public:
+
+  virtual void OnImageGrabbed(CInstantCamera & camera, const CGrabResultPtr & ptrGrabResult)
+  {
+    // std::cout << "OnImageGrabbed event for device " << camera.GetDeviceInfo().GetModelName() << std::endl;
+
+    // Image grabbed successfully?
+    if (ptrGrabResult->GrabSucceeded())
+    {
+      auto name = camera.GetDeviceInfo().GetUserDefinedName();
+      if (name == "camL") {
+
+      } else {
+
+      }
+      // std::cout << "SizeX: " << ptrGrabResult->GetWidth() << std::endl;
+      // std::cout << "SizeY: " << ptrGrabResult->GetHeight() << std::endl;
+      // const uint8_t* pImageBuffer = (uint8_t*) ptrGrabResult->GetBuffer();
+      // std::cout << "Gray value of first pixel: " << (uint32_t) pImageBuffer[0] << std::endl;
+      // std::cout << std::endl;
+    }
+    else
+    {
+      // std::cout << "Error: " << std::hex << ptrGrabResult->GetErrorCode() << std::dec << " " << ptrGrabResult->GetErrorDescription() << std::endl;
+    }
+  }
+};
 
 // class CameraPylon::_Impl
 // {
@@ -42,6 +74,26 @@ CameraPylon::CameraPylon(const rclcpp::NodeOptions & options)
 : Node("camera_pylon_node", options)
 {
   // _init = std::thread(&CameraPylon::_Init, this);
+  this->declare_parameter("power", false, ParameterDescriptor(), true);
+
+  _handle = this->add_on_set_parameters_callback(
+    [this](const std::vector<rclcpp::Parameter> & parameters) {
+      SetParametersResult result;
+      result.successful = true;
+      for (const auto & p : parameters) {
+        if (p.get_name() == "power") {
+          auto ret = 0;
+          if (ret) {
+            result.successful = false;
+            result.reason = "Failed to set power";
+            return result;
+          }
+        }
+      }
+      return result;
+    }
+  );
+
   PylonInitialize();
   CTlFactory& TlFactory = CTlFactory::GetInstance();
   CDeviceInfo dL, dR;
@@ -66,6 +118,21 @@ CameraPylon::~CameraPylon()
   PylonTerminate();
 
   RCLCPP_INFO(this->get_logger(), "Destroyed successfully");
+}
+
+int CameraPylon::_power(bool f)
+{
+  if (f) {
+    if (_timer->is_canceled()) {
+      _timer->reset();
+    }
+  } else {
+    if (_timer->is_canceled() == false) {
+      _timer->cancel();
+    }
+  }
+
+  return 0;
 }
 
 // void CameraPylon::_Init()

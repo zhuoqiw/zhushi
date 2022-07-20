@@ -31,6 +31,13 @@ public:
   virtual ~CameraPylon();
 
 private:
+  /**
+   * @brief Set the power's state: on or off.
+   *
+   * @param f true to power on camera.
+   * @return int 0 if success.
+   */
+  int _power(bool f);
   // void _Init();
   // void _InitializeParameters();
   // void _UpdateParameters();
@@ -53,6 +60,11 @@ private:
   // rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr _srv;
 
   // std::thread _init;
+  /**
+   * @brief ROS parameter callback handle.
+   *
+   */
+  OnSetParametersCallbackHandle::SharedPtr _handle;
 };
 
 }  // namespace camera_pylon
