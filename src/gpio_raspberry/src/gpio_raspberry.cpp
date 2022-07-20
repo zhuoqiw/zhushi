@@ -90,8 +90,13 @@ int GpioRaspberry::_laser(bool f)
 void GpioRaspberry::_callback()
 {
   static bool f = false;
+  static int count = 0;
   gpiod_line_set_value(_line_4.get(), f);
   f = !f;
+  if (++count == 20) {
+    _timer->cancel();
+    count = 0;
+  }
 }
 
 }  // namespace gpio_raspberry
