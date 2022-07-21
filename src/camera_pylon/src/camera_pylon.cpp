@@ -15,125 +15,140 @@
 #include "camera_pylon/camera_pylon.hpp"
 
 #include <memory>
-#include <pylon/PylonIncludes.h>
 
 namespace camera_pylon
 {
-
-using namespace Pylon;
-using rcl_interfaces::msg::ParameterDescriptor;
-using rcl_interfaces::msg::SetParametersResult;
 
 class CImageEventPrinter : public CImageEventHandler
 {
 public:
 
-  virtual void OnImageGrabbed(CInstantCamera & camera, const CGrabResultPtr & ptrGrabResult)
+  virtual void OnImageGrabbed(CInstantCamera & /*camera*/, const CGrabResultPtr & ptrGrabResult)
   {
     // std::cout << "OnImageGrabbed event for device " << camera.GetDeviceInfo().GetModelName() << std::endl;
 
     // Image grabbed successfully?
     if (ptrGrabResult->GrabSucceeded())
     {
-      auto name = camera.GetDeviceInfo().GetUserDefinedName();
-      if (name == "camL") {
-
-      } else {
-
-      }
       // std::cout << "SizeX: " << ptrGrabResult->GetWidth() << std::endl;
       // std::cout << "SizeY: " << ptrGrabResult->GetHeight() << std::endl;
       // const uint8_t* pImageBuffer = (uint8_t*) ptrGrabResult->GetBuffer();
       // std::cout << "Gray value of first pixel: " << (uint32_t) pImageBuffer[0] << std::endl;
       // std::cout << std::endl;
-    }
-    else
-    {
+    } else {
       // std::cout << "Error: " << std::hex << ptrGrabResult->GetErrorCode() << std::dec << " " << ptrGrabResult->GetErrorDescription() << std::endl;
     }
   }
 };
 
-// class CameraPylon::_Impl
-// {
-// public:
-//   explicit _Impl(CameraPylon * ptr)
-//   : _node(ptr)
-//   {
-//   }
+/**
+ * @brief Extract extra 'worker' parameter from ROS node options.
+ *
+ * @param options Encapsulation of options for node initialization.
+ * @return int Number of workers.
+ */
+int workers(const rclcpp::NodeOptions & options)
+{
+  for (const auto & p : options.parameter_overrides()) {
+    if (p.get_name() == "workers") {
+      return p.as_int();
+    }
+  }
+  // Default
+  return 1;
+}
 
-//   ~_Impl()
-//   {
-//   }
-
-// private:
-//   CameraPylon * _node;
-// };
+/**
+ * @brief Extract serial number parameter from ROS node options.
+ *
+ * @param options Encapsulation of options for node initialization.
+ * @return string Serial number.
+ */
+std::string serial_number(const rclcpp::NodeOptions & options)
+{
+  for (const auto & p : options.parameter_overrides()) {
+    if (p.get_name() == "serial") {
+      return p.as_string();
+    }
+  }
+  // Defualt
+  return std::string();
+}
 
 CameraPylon::CameraPylon(const rclcpp::NodeOptions & options)
 : Node("camera_pylon_node", options)
 {
-  // _init = std::thread(&CameraPylon::_Init, this);
-  this->declare_parameter("power", false, ParameterDescriptor(), true);
+  // Get node options
+  _workers = workers(options);
+  auto sn = serial_number(options);
 
-  _handle = this->add_on_set_parameters_callback(
-    [this](const std::vector<rclcpp::Parameter> & parameters) {
-      SetParametersResult result;
-      result.successful = true;
-      for (const auto & p : parameters) {
-        if (p.get_name() == "power") {
-          auto ret = 0;
-          if (ret) {
-            result.successful = false;
-            result.reason = "Failed to set power";
-            return result;
-          }
-        }
+  // for (int i = 0; i < _workers; ++i) {
+  //   _threads.push_back(std::thread(&LaserLineCenter::_worker, this));
+  // }
+  // _threads.push_back(std::thread(&LaserLineCenter::_manager, this));
+
+  // Initialize cameras
+  PylonInitialize();
+  CTlFactory& TlFactory = CTlFactory::GetInstance();
+  CDeviceInfo di;
+  di.SetSerialNumber(sn.c_str());
+  di.SetDeviceClass(BaslerUsbDeviceClass);
+  cam.Attach(TlFactory.CreateDevice(di));
+
+  _pub = this->create_publisher<PointCloud2>(_pub_name, rclcpp::SensorDataQoS());
+
+  _srv_start = this->create_service<Trigger>(
+    _srv_start_name,
+    [this](Trigger::Request::ConstSharedPtr /*request*/,
+    Trigger::Response::SharedPtr /*response*/)
+    {
+      if (!cam.IsGrabbing()) {
+        cam.StartGrabbing(GrabStrategy_OneByOne, GrabLoop_ProvidedByInstantCamera);
       }
-      return result;
     }
   );
 
-  PylonInitialize();
-  CTlFactory& TlFactory = CTlFactory::GetInstance();
-  CDeviceInfo dL, dR;
-  dL.SetSerialNumber("40146410");
-  dL.SetDeviceClass(BaslerUsbDeviceClass);
-  dR.SetSerialNumber("40146429");
-  dR.SetDeviceClass(BaslerUsbDeviceClass);
-  CInstantCamera camL(TlFactory.CreateDevice(dL));
-  CInstantCamera camR(TlFactory.CreateDevice(dR));
+  _srv_stop = this->create_service<Trigger>(
+    _srv_stop_name,
+    [this](Trigger::Request::ConstSharedPtr /*request*/,
+    Trigger::Response::SharedPtr /*response*/) {
+      if (cam.IsGrabbing()) {
+        cam.StopGrabbing();
+      }
+    }
+  );
 
   RCLCPP_INFO(this->get_logger(), "Initialized successfully");
 }
 
 CameraPylon::~CameraPylon()
 {
+  cam.Attach(NULL);
+  PylonTerminate();
   // _init.join();
 
   // _srv.reset();
   // _sub.reset();
   // _impl.reset();
   // _pub.reset();
-  PylonTerminate();
 
   RCLCPP_INFO(this->get_logger(), "Destroyed successfully");
 }
 
-int CameraPylon::_power(bool f)
-{
-  if (f) {
-    if (_timer->is_canceled()) {
-      _timer->reset();
-    }
-  } else {
-    if (_timer->is_canceled() == false) {
-      _timer->cancel();
-    }
-  }
+// int CameraPylon::_power(bool f)
+// {
+//   // if (f) {
+//   //   if (_timer->is_canceled()) {
+//   //     _timer->reset();
+//   //   }
+//   // } else {
+//   //   if (_timer->is_canceled() == false) {
+//   //     _timer->cancel();
+//   //   }
+//   // }
 
-  return 0;
-}
+//   return 0;
+// }
 
 // void CameraPylon::_Init()
 // {
