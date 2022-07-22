@@ -16,8 +16,152 @@
 
 #include <memory>
 
+#include "opencv2/opencv.hpp"
+
 namespace camera_pylon
 {
+
+/**
+ * @brief A map between ksize and normalized scalar for sobel.
+ *
+ */
+std::map<int, double> SCALAR {
+  {1, 1.},
+  {3, 1. / 4.},
+  {5, 1. / 48.},
+  {7, 1. / 640.},
+  {-1, 1. / 16.}
+};
+
+/**
+ * @brief The algorithm to extract laser line center row by row.
+ *
+ * For more details of the algorithm, refer to the README.md.
+ * @param img The input opencv image.
+ * @param buf The buffer to use.
+ * @return PointCloud2::UniquePtr Point cloud message to publish.
+ */
+const std::vector<float> & center(
+  const cv::Mat & img,
+  int ksize = 5,
+  int threshold = 35,
+  double width_min = 1.,
+  double width_max = 30.)
+{
+  thread_local cv::Mat buf;
+
+  thread_local std::vector<float> pnts;
+
+  if (img.empty()) {return pnts;}
+
+  pnts.resize(img.rows);
+
+  cv::Sobel(img, buf, CV_16S, 1, 0, ksize, SCALAR[ksize]);
+
+  for (decltype(img.rows) r = 0; r < img.rows; ++r) {
+    auto pRow = buf.ptr<short>(r);  // NOLINT
+    auto minmax = std::minmax_element(pRow, pRow + img.cols);
+
+    auto minEle = minmax.first;
+    auto maxEle = minmax.second;
+
+    auto minVal = *minEle;
+    auto maxVal = *maxEle;
+
+    auto minPos = minEle - pRow;
+    auto minP = minPos == 0 ? pRow[minPos + 1] : pRow[minPos - 1];
+    auto minN = minPos == img.cols - 1 ? pRow[minPos - 1] : pRow[minPos + 1];
+
+    auto maxPos = maxEle - pRow;
+    auto maxP = maxPos == 0 ? pRow[maxPos + 1] : pRow[maxPos - 1];
+    auto maxN = maxPos == img.cols - 1 ? pRow[maxPos - 1] : pRow[maxPos + 1];
+
+    auto a1 = maxP + maxN - maxVal * 2;
+    auto b1 = maxP - maxN;
+    auto s1 = (a1 < 0 ? 0.5 * b1 / a1 : 0.5 * b1);
+
+    auto a2 = minP + minN - minVal * 2;
+    auto b2 = minP - minN;
+    auto s2 = (a2 > 0 ? 0.5 * b2 / a2 : 0.5 * b2);
+
+    auto c = (maxPos + minPos + s1 + s2) / 2.;
+    auto width = minPos + s2 - maxPos - s1;
+    // std::cout << width << " " << minPos << " " << s2 << " " << maxPos << " " << s1 << "\n";
+    if (
+      maxVal >= threshold &&
+      minVal <= -threshold &&
+      width >= width_min &&
+      width <= width_max &&
+      maxPos > 0 &&
+      minPos < img.cols - 1)
+    {
+      pnts[r] = c;
+    } else {
+      pnts[r] = -1.;
+    }
+  }
+
+  return pnts;
+}
+
+/**
+ * @brief Construct ROS point cloud message from vector of floats.
+ *
+ * @param pnts A sequence of floats as points' row coordinate.
+ * @return PointCloud2::UniquePtr Point cloud message to publish.
+ */
+PointCloud2::UniquePtr to_pc2(const std::vector<float> & pnts)
+{
+  auto ptr = std::make_unique<PointCloud2>();
+  if (pnts.empty()) {return ptr;}
+
+  auto num = pnts.size();
+
+  ptr->height = 1;
+  ptr->width = num;
+
+  ptr->fields.resize(1);
+
+  ptr->fields[0].name = "u";
+  ptr->fields[0].offset = 0;
+  ptr->fields[0].datatype = 7;
+  ptr->fields[0].count = 1;
+
+  ptr->is_bigendian = false;
+  ptr->point_step = 4;
+  ptr->row_step = num * 4;
+
+  ptr->data.resize(num * 4);
+
+  ptr->is_dense = true;
+
+  memcpy(ptr->data.data(), pnts.data(), num * 4);
+
+  return ptr;
+}
+
+/**
+ * @brief Given an image, a point cloud is returned.
+ *
+ * @param ptr ROS image
+ * @param buf Buffer for sobel
+ * @param pm Zipped input parameters
+ * @return PointCloud2::UniquePtr ROS point cloud
+ */
+PointCloud2::UniquePtr execute(CGrabResultPtr ptr)
+{
+  if (ptr) {
+    cv::Mat img(ptr->GetHeight(), ptr->GetWidth(), CV_8UC1, ptr->GetBuffer());
+    auto pnts = center(img);
+    auto line = to_pc2(pnts);
+    line->header.frame_id = std::to_string(ptr->GetImageNumber());
+    return line;
+  } else {
+    auto line = std::make_unique<PointCloud2>();
+    line->header.frame_id = "-1";
+    return line;
+  }
+}
 
 class CImageEventPrinter : public CImageEventHandler
 {
@@ -106,8 +250,9 @@ CameraPylon::CameraPylon(const rclcpp::NodeOptions & options)
   _srv_start = this->create_service<Trigger>(
     _srv_start_name,
     [this](Trigger::Request::ConstSharedPtr /*request*/,
-    Trigger::Response::SharedPtr /*response*/)
+    Trigger::Response::SharedPtr response)
     {
+      response->success = true;
       if (!cam.IsGrabbing()) {
         cam.StartGrabbing(GrabStrategy_OneByOne, GrabLoop_ProvidedByInstantCamera);
       }
@@ -117,7 +262,9 @@ CameraPylon::CameraPylon(const rclcpp::NodeOptions & options)
   _srv_stop = this->create_service<Trigger>(
     _srv_stop_name,
     [this](Trigger::Request::ConstSharedPtr /*request*/,
-    Trigger::Response::SharedPtr /*response*/) {
+    Trigger::Response::SharedPtr response)
+    {
+      response->success = true;
       if (cam.IsGrabbing()) {
         cam.StopGrabbing();
       }
@@ -152,9 +299,9 @@ void CameraPylon::_worker()
       std::promise<PointCloud2::UniquePtr> prom;
       _push_back_future(prom.get_future());
       lk.unlock();
-      // auto line = execute(std::move(ptr), buf, pm);
-      auto line = std::make_unique<PointCloud2>();
-      line->header.frame_id = std::to_string(ptr->GetImageNumber());
+      auto line = execute(std::move(ptr));
+      // auto line = std::make_unique<PointCloud2>();
+      // line->header.frame_id = std::to_string(ptr->GetImageNumber());
       prom.set_value(std::move(line));
     } else {
       _images_con.wait(lk);
