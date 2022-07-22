@@ -34,6 +34,8 @@ using namespace Pylon;
 
 class CameraPylon : public rclcpp::Node
 {
+  friend class CImageEventPrinter;
+
 public:
   explicit CameraPylon(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
   virtual ~CameraPylon();
@@ -52,6 +54,39 @@ public:
   // void _Srv(
   //   const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
   //   std::shared_ptr<std_srvs::srv::Trigger::Response> response);  // TODO(imp)
+private:
+  /**
+   * @brief The worker works in seperate thread to process incoming date parallelly.
+   *
+   * Create a buffer.
+   * Enter infinite loop.
+   * Wait for incoming data.
+   * Wake up to get a possible data, make a promise and notify the manager.
+   * Continue to work on the data and return to sleep if no further data to process.
+   */
+  void _worker();
+
+  /**
+   * @brief The manager works in seperate thread to gather worker's results in order.
+   *
+   * Spin infinitely until rclcpp:ok() return false.
+   * Whenever a future is ready, the manager wake up, get the result from the future and publish.
+   */
+  void _manager();
+
+  /**
+   * @brief Push a image and notity workers.
+   *
+   * @param ptr Reference to a unique pointer to image to be moved.
+   */
+  void _push_back_image(const CGrabResultPtr & rhs);
+
+  /**
+   * @brief Promise a future so its future can be sychronized and notify the manager.
+   *
+   * @param f A future to point cloud msg.
+   */
+  void _push_back_future(std::future<PointCloud2::UniquePtr> fut);
 
 private:
   CInstantCamera cam;

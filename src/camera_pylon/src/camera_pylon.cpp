@@ -22,6 +22,8 @@ namespace camera_pylon
 class CImageEventPrinter : public CImageEventHandler
 {
 public:
+  explicit CImageEventPrinter(CameraPylon * ptr)
+  : _ptr(ptr) {}
 
   virtual void OnImageGrabbed(CInstantCamera & /*camera*/, const CGrabResultPtr & ptrGrabResult)
   {
@@ -30,6 +32,7 @@ public:
     // Image grabbed successfully?
     if (ptrGrabResult->GrabSucceeded())
     {
+      _ptr->_push_back_image(ptrGrabResult);
       // std::cout << "SizeX: " << ptrGrabResult->GetWidth() << std::endl;
       // std::cout << "SizeY: " << ptrGrabResult->GetHeight() << std::endl;
       // const uint8_t* pImageBuffer = (uint8_t*) ptrGrabResult->GetBuffer();
@@ -39,6 +42,9 @@ public:
       // std::cout << "Error: " << std::hex << ptrGrabResult->GetErrorCode() << std::dec << " " << ptrGrabResult->GetErrorDescription() << std::endl;
     }
   }
+
+private:
+  CameraPylon * _ptr;
 };
 
 /**
@@ -82,10 +88,10 @@ CameraPylon::CameraPylon(const rclcpp::NodeOptions & options)
   _workers = workers(options);
   auto sn = serial_number(options);
 
-  // for (int i = 0; i < _workers; ++i) {
-  //   _threads.push_back(std::thread(&LaserLineCenter::_worker, this));
-  // }
-  // _threads.push_back(std::thread(&LaserLineCenter::_manager, this));
+  for (int i = 0; i < _workers; ++i) {
+    _threads.push_back(std::thread(&CameraPylon::_worker, this));
+  }
+  _threads.push_back(std::thread(&CameraPylon::_manager, this));
 
   // Initialize cameras
   PylonInitialize();
@@ -94,7 +100,7 @@ CameraPylon::CameraPylon(const rclcpp::NodeOptions & options)
   di.SetSerialNumber(sn.c_str());
   di.SetDeviceClass(BaslerUsbDeviceClass);
   cam.Attach(TlFactory.CreateDevice(di));
-
+  cam.RegisterImageEventHandler( new CImageEventPrinter(this), RegistrationMode_Append, Cleanup_Delete );
   _pub = this->create_publisher<PointCloud2>(_pub_name, rclcpp::SensorDataQoS());
 
   _srv_start = this->create_service<Trigger>(
@@ -133,6 +139,64 @@ CameraPylon::~CameraPylon()
   // _pub.reset();
 
   RCLCPP_INFO(this->get_logger(), "Destroyed successfully");
+}
+
+void CameraPylon::_worker()
+{
+  // cv::Mat buf;
+  while (rclcpp::ok()) {
+    std::unique_lock<std::mutex> lk(_images_mut);
+    if (_images.empty() == false) {
+      auto ptr = _images.front();
+      _images.pop_front();
+      std::promise<PointCloud2::UniquePtr> prom;
+      _push_back_future(prom.get_future());
+      lk.unlock();
+      // auto line = execute(std::move(ptr), buf, pm);
+      auto line = std::make_unique<PointCloud2>();
+      line->header.frame_id = std::to_string(ptr->GetImageNumber());
+      prom.set_value(std::move(line));
+    } else {
+      _images_con.wait(lk);
+    }
+  }
+}
+
+void CameraPylon::_manager()
+{
+  while (rclcpp::ok()) {
+    std::unique_lock<std::mutex> lk(_futures_mut);
+    if (_futures.empty() == false) {
+      auto f = std::move(_futures.front());
+      _futures.pop_front();
+      lk.unlock();
+      auto ptr = f.get();
+      // _pub->publish(std::move(ptr));
+      RCLCPP_INFO(this->get_logger(), "Image: %s", ptr->header.frame_id.c_str());
+    } else {
+      _futures_con.wait(lk);
+    }
+  }
+}
+
+void CameraPylon::_push_back_image(const CGrabResultPtr & rhs)
+{
+  std::unique_lock<std::mutex> lk(_images_mut);
+  _images.push_back(rhs);
+  auto s = static_cast<int>(_images.size());
+  if (s > _workers + 1) {
+    _images.pop_front();
+  }
+  lk.unlock();
+  _images_con.notify_all();
+}
+
+void CameraPylon::_push_back_future(std::future<PointCloud2::UniquePtr> fut)
+{
+  std::unique_lock<std::mutex> lk(_futures_mut);
+  _futures.emplace_back(std::move(fut));
+  lk.unlock();
+  _futures_con.notify_one();
 }
 
 // int CameraPylon::_power(bool f)
