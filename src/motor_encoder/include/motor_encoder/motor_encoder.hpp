@@ -21,7 +21,7 @@ private:
     void _UpdateParameters();
 
 private:
-	int _speed = 1600;
+	int _speed = 800;
     int _pos_init = 1100;
     int _direction_flag = -1;
 

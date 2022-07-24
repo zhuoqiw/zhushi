@@ -8,5 +8,6 @@
 ## TBD
 
 1. motor encode trigger camera
-1. camera trigger source from one
-
+1. move motor codec into PLC
+1. use one source to trigger camera
+1. move PCL to another pc unit

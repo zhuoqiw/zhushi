@@ -1,5 +1,5 @@
 motor_encoder_node:
   ros__parameters:
-    speed: 1600 #int
+    speed: 800 #int
     pos_init: 1100 
     direction_flag: -1
