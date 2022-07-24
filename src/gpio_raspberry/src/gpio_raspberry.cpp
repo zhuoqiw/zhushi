@@ -55,7 +55,7 @@ GpioRaspberry::GpioRaspberry(const rclcpp::NodeOptions & options)
       return result;
     });
 
-  _timer = this->create_wall_timer(500ms, [this]() {_callback();});
+  _timer = this->create_wall_timer(20ms, [this]() {_callback();});
   _timer->cancel();
 
   RCLCPP_INFO(this->get_logger(), "Initialized successfully");
