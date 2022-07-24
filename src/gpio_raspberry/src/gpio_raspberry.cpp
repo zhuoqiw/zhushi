@@ -93,7 +93,7 @@ void GpioRaspberry::_callback()
   static int count = 0;
   gpiod_line_set_value(_line_4.get(), f);
   f = !f;
-  if (++count == 20) {
+  if (++count == 500) {
     _timer->cancel();
     count = 0;
   }
