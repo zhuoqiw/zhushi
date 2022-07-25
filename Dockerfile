@@ -13,6 +13,7 @@ FROM zhuoqiw/ros-pylon:6.2.0-${UBUNTU_VERSION} AS pylon
 # Base image
 FROM ros:${ROS_DISTRO} AS base
 
+RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /root/.bashrc
 # Create a non-root user
 # RUN groupadd --gid 1000 ros \
 #     && useradd -s /bin/bash --uid 1000 --gid 1000 -m ros \
