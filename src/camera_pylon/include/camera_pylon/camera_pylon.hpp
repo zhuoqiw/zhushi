@@ -15,22 +15,18 @@
 #ifndef CAMERA_PYLON__CAMERA_PYLON_HPP_
 #define CAMERA_PYLON__CAMERA_PYLON_HPP_
 
+#include <pylon/PylonIncludes.h>
+
 #include <deque>
 #include <memory>
+#include <vector>
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_srvs/srv/trigger.hpp"
 #include "sensor_msgs/msg/point_cloud2.hpp"
 
-#include <pylon/PylonIncludes.h>
-
 namespace camera_pylon
 {
-
-using std_srvs::srv::Trigger;
-using sensor_msgs::msg::PointCloud2;
-
-using namespace Pylon;
 
 class CameraPylon : public rclcpp::Node
 {
@@ -54,6 +50,7 @@ public:
   // void _Srv(
   //   const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
   //   std::shared_ptr<std_srvs::srv::Trigger::Response> response);  // TODO(imp)
+
 private:
   /**
    * @brief The worker works in seperate thread to process incoming date parallelly.
@@ -86,10 +83,10 @@ private:
    *
    * @param f A future to point cloud msg.
    */
-  void _push_back_future(std::future<PointCloud2::UniquePtr> fut);
+  void _push_back_future(std::future<sensor_msgs::msg::PointCloud2::UniquePtr> fut);
 
 private:
-  CInstantCamera cam;
+  Pylon::CInstantCamera cam;
   // class _Impl;
   // std::unique_ptr<_Impl> _impl;
 
@@ -100,10 +97,10 @@ private:
   // rclcpp::Subscription<std_msgs::msg::String>::SharedPtr _sub;
 
   const char * _srv_start_name = "~/start";  // TODO(imp)
-  rclcpp::Service<Trigger>::SharedPtr _srv_start;
+  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr _srv_start;
 
   const char * _srv_stop_name = "~/stop";  // TODO(imp)
-  rclcpp::Service<Trigger>::SharedPtr _srv_stop;
+  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr _srv_stop;
 
   /**
    * @brief Publisher name.
@@ -115,7 +112,7 @@ private:
    * @brief Shared pointer to publisher.
    *
    */
-  rclcpp::Publisher<PointCloud2>::SharedPtr _pub;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr _pub;
 
   /**
    * @brief Number of co-workers.
@@ -157,7 +154,7 @@ private:
    * @brief Double end queue for results.
    *
    */
-  std::deque<std::future<PointCloud2::UniquePtr>> _futures;
+  std::deque<std::future<sensor_msgs::msg::PointCloud2::UniquePtr>> _futures;
 
   /**
    * @brief Threads for workers and the manager.

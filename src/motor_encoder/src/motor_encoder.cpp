@@ -5,10 +5,12 @@
 namespace motor_encoder
 {
 
-    void ReachCallback(int /*type*/)
-    {
+using std_srvs::srv::Trigger;
 
-    }
+void ReachCallback(int /*type*/)
+{
+
+}
 
 MotorEncoder::MotorEncoder(const rclcpp::NodeOptions& options) : Node("motor_encoder_node", options)
 {
@@ -17,7 +19,7 @@ MotorEncoder::MotorEncoder(const rclcpp::NodeOptions& options) : Node("motor_enc
 
     _motorTmcl = std::make_unique<motor_tmcl::MotorTmcl>(ReachCallback,_pos_init,_direction_flag);
     
-    _srvScan = this->create_service<std_srvs::srv::Trigger>(_srvScanName, [this](const std::shared_ptr<std_srvs::srv::Trigger::Request>, std::shared_ptr<std_srvs::srv::Trigger::Response> response)
+    _srvScan = this->create_service<Trigger>(_srvScanName, [this](const std::shared_ptr<std_srvs::srv::Trigger::Request>, std::shared_ptr<std_srvs::srv::Trigger::Response> response)
     {
         try
         {
@@ -41,7 +43,7 @@ MotorEncoder::MotorEncoder(const rclcpp::NodeOptions& options) : Node("motor_enc
         }
     });
 
-    _srvZero = this->create_service<std_srvs::srv::Trigger>(_srvZeroName, [this](const std::shared_ptr<std_srvs::srv::Trigger::Request>, std::shared_ptr<std_srvs::srv::Trigger::Response> response)
+    _srvZero = this->create_service<Trigger>(_srvZeroName, [this](const std::shared_ptr<std_srvs::srv::Trigger::Request>, std::shared_ptr<std_srvs::srv::Trigger::Response> response)
     {
         try
         {
@@ -63,7 +65,7 @@ MotorEncoder::MotorEncoder(const rclcpp::NodeOptions& options) : Node("motor_enc
         }
     });
     
-    _srvCenter = this->create_service<std_srvs::srv::Trigger>(_srvCenterName, [this](const std::shared_ptr<std_srvs::srv::Trigger::Request>, std::shared_ptr<std_srvs::srv::Trigger::Response> response)
+    _srvCenter = this->create_service<Trigger>(_srvCenterName, [this](const std::shared_ptr<std_srvs::srv::Trigger::Request>, std::shared_ptr<std_srvs::srv::Trigger::Response> response)
     {
         try
         {

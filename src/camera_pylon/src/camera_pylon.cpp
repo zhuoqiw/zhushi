@@ -14,12 +14,20 @@
 
 #include "camera_pylon/camera_pylon.hpp"
 
+#include <map>
 #include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include "opencv2/opencv.hpp"
 
 namespace camera_pylon
 {
+
+using namespace Pylon;
+using std_srvs::srv::Trigger;
+using sensor_msgs::msg::PointCloud2;
 
 /**
  * @brief A map between ksize and normalized scalar for sobel.
@@ -171,11 +179,8 @@ public:
 
   virtual void OnImageGrabbed(CInstantCamera & /*camera*/, const CGrabResultPtr & ptrGrabResult)
   {
-    // std::cout << "OnImageGrabbed event for device " << camera.GetDeviceInfo().GetModelName() << std::endl;
-
     // Image grabbed successfully?
-    if (ptrGrabResult->GrabSucceeded())
-    {
+    if (ptrGrabResult->GrabSucceeded()) {
       _ptr->_push_back_image(ptrGrabResult);
       // std::cout << "SizeX: " << ptrGrabResult->GetWidth() << std::endl;
       // std::cout << "SizeY: " << ptrGrabResult->GetHeight() << std::endl;
@@ -183,7 +188,6 @@ public:
       // std::cout << "Gray value of first pixel: " << (uint32_t) pImageBuffer[0] << std::endl;
       // std::cout << std::endl;
     } else {
-      // std::cout << "Error: " << std::hex << ptrGrabResult->GetErrorCode() << std::dec << " " << ptrGrabResult->GetErrorDescription() << std::endl;
     }
   }
 
@@ -239,18 +243,22 @@ CameraPylon::CameraPylon(const rclcpp::NodeOptions & options)
 
   // Initialize cameras
   PylonInitialize();
-  CTlFactory& TlFactory = CTlFactory::GetInstance();
+  CTlFactory & TlFactory = CTlFactory::GetInstance();
   CDeviceInfo di;
   di.SetSerialNumber(sn.c_str());
   di.SetDeviceClass(BaslerUsbDeviceClass);
   cam.Attach(TlFactory.CreateDevice(di));
-  cam.RegisterImageEventHandler( new CImageEventPrinter(this), RegistrationMode_Append, Cleanup_Delete );
+  cam.RegisterImageEventHandler(
+    new CImageEventPrinter(this),
+    RegistrationMode_Append,
+    Cleanup_Delete);
   _pub = this->create_publisher<PointCloud2>(_pub_name, rclcpp::SensorDataQoS());
 
   _srv_start = this->create_service<Trigger>(
     _srv_start_name,
-    [this](Trigger::Request::ConstSharedPtr /*request*/,
-    Trigger::Response::SharedPtr response)
+    [this](
+      const std::shared_ptr<Trigger::Request>/*request*/,
+      std::shared_ptr<Trigger::Response> response)
     {
       response->success = true;
       if (!cam.IsGrabbing()) {
@@ -261,8 +269,9 @@ CameraPylon::CameraPylon(const rclcpp::NodeOptions & options)
 
   _srv_stop = this->create_service<Trigger>(
     _srv_stop_name,
-    [this](Trigger::Request::ConstSharedPtr /*request*/,
-    Trigger::Response::SharedPtr response)
+    [this](
+      const std::shared_ptr<Trigger::Request>/*request*/,
+      std::shared_ptr<Trigger::Response> response)
     {
       response->success = true;
       if (cam.IsGrabbing()) {
