@@ -22,19 +22,18 @@
 
     // Add the IDs of extensions you want installed when the container is created.
     "extensions": [
-        "ms-vscode.cpptools",
+        "ms-vscode.cpptools-extension-pack",
         "ms-python.python",
-        "ms-azuretools.vscode-docker",
-        "ms-vscode.cmake-tools"
+        "ms-azuretools.vscode-docker"
         // "cschlosser.doxdocgen",
         // "njpwerner.autodocstring"
-    ]
+    ],
 
     // Use 'forwardPorts' to make a list of ports inside the container available locally.
     // "forwardPorts": [],
 
     // Use 'postCreateCommand' to run commands after the container is created.
-    // "postCreateCommand": "gcc -v",
+    "postCreateCommand": "git config --global --add safe.directory /workspaces/zhushi"
 
     // Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
     // "remoteUser": "ros"

@@ -4,16 +4,14 @@
             "name": "zhushi",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/opt/ros/humble/include",
-                "/opt/ros/humble/include/rclcpp",
+                "/opt/ros/**",
                 "/opt/opencv/include/opencv4",
                 "/opt/pylon/include"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",
             "cStandard": "c99",
-            "cppStandard": "c++14",
-            "intelliSenseMode": "linux-gcc-x64"
+            "cppStandard": "c++14"
         }
     ],
     "version": 4
