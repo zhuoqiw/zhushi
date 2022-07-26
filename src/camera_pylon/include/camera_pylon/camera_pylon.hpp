@@ -76,7 +76,7 @@ private:
    *
    * @param ptr Reference to a unique pointer to image to be moved.
    */
-  void _push_back_image(const CGrabResultPtr & rhs);
+  void _push_back_image(const Pylon::CGrabResultPtr & rhs);
 
   /**
    * @brief Promise a future so its future can be sychronized and notify the manager.
@@ -136,7 +136,7 @@ private:
    * @brief Double end queue for images.
    *
    */
-  std::deque<CGrabResultPtr> _images;
+  std::deque<Pylon::CGrabResultPtr> _images;
 
   /**
    * @brief Mutex to protect result queue.
