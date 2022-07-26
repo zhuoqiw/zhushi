@@ -19,7 +19,7 @@ RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /root/.bashrc
 # Create a non-root user
 RUN groupadd --gid 1000 ros \
     && useradd -ms /bin/bash --uid 1000 --gid 1000 ros \
-    && usermod -aG video sudo ros \
+    && usermod -aG video,sudo ros \
     && echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /home/ros/.bashrc
 
 # Copy from opencv
