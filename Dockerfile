@@ -14,7 +14,7 @@ FROM zhuoqiw/ros-pylon:6.2.0-${UBUNTU_VERSION} AS pylon
 FROM ros:${ROS_DISTRO} AS base
 
 # Enable root user access ros
-RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /root/.bashrc
+# RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /root/.bashrc
 
 # Create a non-root user
 RUN groupadd --gid 1000 ros \
@@ -45,3 +45,5 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
 
 # Setup ldconfig
 RUN ldconfig
+
+USER ros
