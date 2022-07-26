@@ -13,12 +13,14 @@ FROM zhuoqiw/ros-pylon:6.2.0-${UBUNTU_VERSION} AS pylon
 # Base image
 FROM ros:${ROS_DISTRO} AS base
 
+# Enable root user access ros
 RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /root/.bashrc
+
 # Create a non-root user
-# RUN groupadd --gid 1000 ros \
-#     && useradd -s /bin/bash --uid 1000 --gid 1000 -m ros \
-#     && usermod -a -G video ros \
-#     && echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /home/ros/.bashrc
+RUN groupadd --gid 1000 ros \
+    && useradd -ms /bin/bash --uid 1000 --gid 1000 ros \
+    && usermod -aG video sudo ros \
+    && echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /home/ros/.bashrc
 
 # Copy from opencv
 COPY --from=opencv /setup /
@@ -32,6 +34,7 @@ COPY --from=pylon /setup /
 # Setup environment
 ENV PYLON_ROOT=/opt/pylon
 
+# Install dependencies
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install --no-install-recommends \
     gdb \
