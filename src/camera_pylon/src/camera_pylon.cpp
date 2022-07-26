@@ -245,7 +245,8 @@ CameraPylon::CameraPylon(const rclcpp::NodeOptions & options)
   PylonInitialize();
   CTlFactory & TlFactory = CTlFactory::GetInstance();
   CDeviceInfo di;
-  di.SetSerialNumber(sn.c_str());
+  // di.SetSerialNumber(sn.c_str());
+  di.SetSerialNumber("40146410");
   di.SetDeviceClass(BaslerUsbDeviceClass);
   cam.Attach(TlFactory.CreateDevice(di));
   cam.BslDefectPixelCorrectionMode.SetValue(BslDefectPixelCorrectionMode_Off);
