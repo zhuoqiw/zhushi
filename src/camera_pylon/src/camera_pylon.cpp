@@ -195,46 +195,11 @@ private:
   CameraPylon * _ptr;
 };
 
-/**
- * @brief Extract extra 'worker' parameter from ROS node options.
- *
- * @param options Encapsulation of options for node initialization.
- * @return int Number of workers.
- */
-int workers(const rclcpp::NodeOptions & options)
-{
-  for (const auto & p : options.parameter_overrides()) {
-    if (p.get_name() == "workers") {
-      return p.as_int();
-    }
-  }
-  // Default
-  return 1;
-}
-
-/**
- * @brief Extract serial number parameter from ROS node options.
- *
- * @param options Encapsulation of options for node initialization.
- * @return string Serial number.
- */
-std::string serial_number(const rclcpp::NodeOptions & options)
-{
-  for (const auto & p : options.parameter_overrides()) {
-    if (p.get_name() == "serial") {
-      return p.as_string();
-    }
-  }
-  // Defualt
-  return std::string();
-}
-
 CameraPylon::CameraPylon(const rclcpp::NodeOptions & options)
 : Node("camera_pylon_node", options)
 {
-  // Get node options
-  _workers = workers(options);
-  auto sn = serial_number(options);
+  _workers = this->declare_parameter<int>("workers", 1);
+  auto sn = this->declare_parameter<std::string>("serial", "");
 
   for (int i = 0; i < _workers; ++i) {
     _threads.push_back(std::thread(&CameraPylon::_worker, this));
@@ -246,10 +211,13 @@ CameraPylon::CameraPylon(const rclcpp::NodeOptions & options)
   CTlFactory & TlFactory = CTlFactory::GetInstance();
   CDeviceInfo di;
   // di.SetSerialNumber(sn.c_str());
-  di.SetSerialNumber("40146410");
+  di.SetSerialNumber(sn.c_str());
   di.SetDeviceClass(BaslerUsbDeviceClass);
   cam.Attach(TlFactory.CreateDevice(di));
-  cam.BslDefectPixelCorrectionMode.SetValue(BslDefectPixelCorrectionMode_Off);
+  cam.Open();
+  GenApi_3_1_Basler_pylon::INodeMap& nodemap = cam.GetNodeMap();
+  // Disable defect pixel correction
+  CEnumParameter(nodemap, "BslDefectPixelCorrectionMode").SetValue("Off");
   cam.RegisterImageEventHandler(
     new CImageEventPrinter(this),
     RegistrationMode_Append,

@@ -1,3 +1,4 @@
 camera_pylon_node:
   ros__parameters:
-    test: TODO
+    workers: 1
+    serial: ''
