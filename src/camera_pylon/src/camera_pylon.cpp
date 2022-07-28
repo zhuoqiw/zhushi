@@ -248,6 +248,7 @@ CameraPylon::CameraPylon(const rclcpp::NodeOptions & options)
   di.SetSerialNumber(sn.c_str());
   di.SetDeviceClass(BaslerUsbDeviceClass);
   cam.Attach(TlFactory.CreateDevice(di));
+  cam.BslDefectPixelCorrectionMode.SetValue(BslDefectPixelCorrectionMode_Off);
   cam.RegisterImageEventHandler(
     new CImageEventPrinter(this),
     RegistrationMode_Append,
