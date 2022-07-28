@@ -50,13 +50,13 @@ def generate_launch_description():
         name='camera_pylon_node_l',
         parameters=[params])
 
-    # params['workers'] = 2
-    # params['serial'] = '40146429'
-    # camera_pylon_node_r = Node(
-    #     package='camera_pylon',
-    #     executable='camera_pylon_node',
-    #     name='camera_pylon_node_r',
-    #     parameters=[params])
+    params['workers'] = 2
+    params['serial'] = '40146429'
+    camera_pylon_node_r = Node(
+        package='camera_pylon',
+        executable='camera_pylon_node',
+        name='camera_pylon_node_r',
+        parameters=[params])
 
     # container = ComposableNodeContainer(
     #     name='pipeline_container',
@@ -93,4 +93,5 @@ def generate_launch_description():
     #     on_exit=launch.actions.Shutdown())
 
     return launch.LaunchDescription([
-        camera_pylon_node_l])
+        camera_pylon_node_l,
+        camera_pylon_node_r])
