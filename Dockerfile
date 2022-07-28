@@ -1,3 +1,10 @@
+# Global args
+# Add a non-root user to a container
+# For more information, visit: https://code.visualstudio.com/remote/advancedcontainers/add-nonroot-user
+ARG USERNAME=ros
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
+
 # Ubuntu LTS release: 20.04, 22.04
 ARG UBUNTU_VERSION
 
@@ -17,19 +24,18 @@ FROM ros:${ROS_DISTRO} AS base
 # RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /root/.bashrc
 
 # Create a non-root user
-RUN groupadd --gid 1000 ros \
-    && useradd -ms /bin/bash --uid 1000 --gid 1000 ros \
-    && usermod -aG video ros \
-    && echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /home/ros/.bashrc
+RUN groupadd --gid $USER_GID $USERNAME \
+    && useradd --uid $USER_UID --gid $USER_GID --shell /bin/bash --create-home $USERNAME
+
+# [Optional] Add sudo support. Omit if you don't need to install software after connecting.
+RUN echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
+    && chmod 0440 /etc/sudoers.d/$USERNAME
 
 # Copy from opencv
 COPY --from=opencv /setup /
 
 # Copy from pylon
 COPY --from=pylon /setup /
-
-# Copy source
-# COPY --chown=ros:ros src /home/ros/ws/src/
 
 # Setup environment
 ENV PYLON_ROOT=/opt/pylon
