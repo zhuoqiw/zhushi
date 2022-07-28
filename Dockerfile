@@ -23,6 +23,11 @@ FROM ros:${ROS_DISTRO} AS base
 # Enable root user access ros
 # RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /root/.bashrc
 
+# Redeclare arguments
+ARG USERNAME
+ARG USER_UID
+ARG USER_GID
+
 # Create a non-root user
 RUN groupadd --gid $USER_GID $USERNAME \
     && useradd --uid $USER_UID --gid $USER_GID --shell /bin/bash --create-home $USERNAME
