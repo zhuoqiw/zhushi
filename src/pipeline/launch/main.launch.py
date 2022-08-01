@@ -58,6 +58,33 @@ def generate_launch_description():
         name='camera_pylon_node_r',
         parameters=[params])
 
+    """Generate launch description with a component."""
+    configFile = os.path.join(
+        get_package_share_directory('gpio_raspberry'),
+        'config',
+        'params.yaml')
+
+    with open(configFile, 'r') as file:
+        params = yaml.safe_load(file)['gpio_raspberry_node']['ros__parameters']
+
+    gpio_raspberry_node = Node(
+        package='gpio_raspberry',
+        executable='gpio_raspberry_node',
+    )
+
+    """Generate launch description with a component."""
+    configFile = os.path.join(
+        get_package_share_directory('motor_encoder'),
+        'config',
+        'params.yaml')
+
+    with open(configFile, 'r') as file:
+        params = yaml.safe_load(file)['motor_encoder_node']['ros__parameters']
+
+    motor_encoder_node = Node(
+        package='motor_encoder',
+        executable='motor_encoder_node',
+    )
     # container = ComposableNodeContainer(
     #     name='pipeline_container',
     #     namespace='',
@@ -94,4 +121,6 @@ def generate_launch_description():
 
     return launch.LaunchDescription([
         camera_pylon_node_l,
-        camera_pylon_node_r])
+        camera_pylon_node_r,
+        gpio_raspberry_node,
+        motor_encoder_node])
