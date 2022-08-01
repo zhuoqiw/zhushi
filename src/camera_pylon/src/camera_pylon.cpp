@@ -29,6 +29,9 @@ using namespace Pylon;
 using std_srvs::srv::Trigger;
 using sensor_msgs::msg::PointCloud2;
 
+constexpr int TICKS_PER_SEC = 1000000000;
+constexpr int BUFFER_NUMBER = 10;
+
 /**
  * @brief A map between ksize and normalized scalar for sobel.
  *
@@ -156,13 +159,16 @@ PointCloud2::UniquePtr to_pc2(const std::vector<float> & pnts)
  * @param pm Zipped input parameters
  * @return PointCloud2::UniquePtr ROS point cloud
  */
-PointCloud2::UniquePtr execute(CGrabResultPtr ptr)
+PointCloud2::UniquePtr execute(const CGrabResultPtr & ptr)
 {
   if (ptr) {
     cv::Mat img(ptr->GetHeight(), ptr->GetWidth(), CV_8UC1, ptr->GetBuffer());
     auto pnts = center(img);
     auto line = to_pc2(pnts);
     line->header.frame_id = std::to_string(ptr->GetImageNumber());
+    auto stamp = ptr->GetTimeStamp();
+    line->header.stamp.sec = stamp / TICKS_PER_SEC;
+    line->header.stamp.nanosec = stamp % TICKS_PER_SEC;
     return line;
   } else {
     auto line = std::make_unique<PointCloud2>();
@@ -182,12 +188,8 @@ public:
     // Image grabbed successfully?
     if (ptrGrabResult->GrabSucceeded()) {
       _ptr->_push_back_image(ptrGrabResult);
-      // std::cout << "SizeX: " << ptrGrabResult->GetWidth() << std::endl;
-      // std::cout << "SizeY: " << ptrGrabResult->GetHeight() << std::endl;
-      // const uint8_t* pImageBuffer = (uint8_t*) ptrGrabResult->GetBuffer();
-      // std::cout << "Gray value of first pixel: " << (uint32_t) pImageBuffer[0] << std::endl;
-      // std::cout << std::endl;
     } else {
+      RCLCPP_WARN(this->get_logger(), "Image broken");
     }
   }
 
@@ -210,7 +212,6 @@ CameraPylon::CameraPylon(const rclcpp::NodeOptions & options)
   PylonInitialize();
   CTlFactory & TlFactory = CTlFactory::GetInstance();
   CDeviceInfo di;
-  // di.SetSerialNumber(sn.c_str());
   di.SetSerialNumber(sn.c_str());
   di.SetDeviceClass(BaslerUsbDeviceClass);
   cam.Attach(TlFactory.CreateDevice(di));
@@ -278,7 +279,7 @@ void CameraPylon::_worker()
       std::promise<PointCloud2::UniquePtr> prom;
       _push_back_future(prom.get_future());
       lk.unlock();
-      auto line = execute(std::move(ptr));
+      auto line = execute(ptr);
       // auto line = std::make_unique<PointCloud2>();
       // line->header.frame_id = std::to_string(ptr->GetImageNumber());
       prom.set_value(std::move(line));
@@ -310,8 +311,9 @@ void CameraPylon::_push_back_image(const CGrabResultPtr & rhs)
   std::unique_lock<std::mutex> lk(_images_mut);
   _images.push_back(rhs);
   auto s = static_cast<int>(_images.size());
-  if (s > _workers + 1) {
+  if (s >= BUFFER_NUMBER - 1) {
     _images.pop_front();
+    RCLCPP_WARN(this->get_logger(), "Image skipped");
   }
   lk.unlock();
   _images_con.notify_all();
