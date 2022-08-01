@@ -162,7 +162,6 @@ private:
    */
   std::vector<std::thread> _threads;
 
-  // std::thread _init;
   /**
    * @brief ROS parameter callback handle.
    *

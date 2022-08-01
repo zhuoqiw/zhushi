@@ -25,11 +25,20 @@
 namespace camera_pylon
 {
 
-using namespace Pylon;
+using namespace Pylon;  // NOLINT
 using std_srvs::srv::Trigger;
 using sensor_msgs::msg::PointCloud2;
 
+/**
+ * @brief Basler time stamp, ticks per second.
+ * 
+ */
 constexpr int TICKS_PER_SEC = 1000000000;
+
+/**
+ * @brief Basler image buffer number.
+ * 
+ */
 constexpr int BUFFER_NUMBER = 10;
 
 /**
@@ -189,7 +198,7 @@ public:
     if (ptrGrabResult->GrabSucceeded()) {
       _ptr->_push_back_image(ptrGrabResult);
     } else {
-      RCLCPP_WARN(this->get_logger(), "Image broken");
+      // RCLCPP_WARN(this->get_logger(), "Image broken");
     }
   }
 
@@ -216,7 +225,7 @@ CameraPylon::CameraPylon(const rclcpp::NodeOptions & options)
   di.SetDeviceClass(BaslerUsbDeviceClass);
   cam.Attach(TlFactory.CreateDevice(di));
   cam.Open();
-  GenApi_3_1_Basler_pylon::INodeMap& nodemap = cam.GetNodeMap();
+  GenApi_3_1_Basler_pylon::INodeMap & nodemap = cam.GetNodeMap();
   // Disable defect pixel correction
   CEnumParameter(nodemap, "BslDefectPixelCorrectionMode").SetValue("Off");
   cam.RegisterImageEventHandler(
@@ -298,8 +307,8 @@ void CameraPylon::_manager()
       _futures.pop_front();
       lk.unlock();
       auto ptr = f.get();
-      // _pub->publish(std::move(ptr));
-      RCLCPP_INFO(this->get_logger(), "Image: %s", ptr->header.frame_id.c_str());
+      _pub->publish(std::move(ptr));
+      // RCLCPP_INFO(this->get_logger(), "Image: %s", ptr->header.frame_id.c_str());
     } else {
       _futures_con.wait(lk);
     }
