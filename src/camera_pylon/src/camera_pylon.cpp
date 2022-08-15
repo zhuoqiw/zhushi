@@ -24,6 +24,8 @@
 
 namespace camera_pylon
 {
+int COUNT = 0;
+int ID = 0;
 
 using namespace Pylon;  // NOLINT
 using std_srvs::srv::Trigger;
@@ -267,6 +269,7 @@ CameraPylon::~CameraPylon()
 {
   cam.Attach(NULL);
   PylonTerminate();
+  RCLCPP_INFO(this->get_logger(), "count: %i, id: %i", COUNT, ID);
   // _init.join();
 
   // _srv.reset();
@@ -317,6 +320,8 @@ void CameraPylon::_manager()
 
 void CameraPylon::_push_back_image(const CGrabResultPtr & rhs)
 {
+  COUNT++;
+  ID = rhs->GetImageNumber();
   std::unique_lock<std::mutex> lk(_images_mut);
   _images.push_back(rhs);
   auto s = static_cast<int>(_images.size());
@@ -333,7 +338,7 @@ void CameraPylon::_push_back_future(std::future<PointCloud2::UniquePtr> fut)
   std::unique_lock<std::mutex> lk(_futures_mut);
   _futures.emplace_back(std::move(fut));
   lk.unlock();
-  _futures_con.notify_one();
+  _futures_con.notify_all();
 }
 
 // int CameraPylon::_power(bool f)
