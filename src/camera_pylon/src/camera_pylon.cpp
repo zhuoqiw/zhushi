@@ -208,6 +208,119 @@ private:
   CameraPylon * _ptr;
 };
 
+class CHardwareTriggerConfiguration : public CConfigurationEventHandler
+{
+public:
+  /// Apply software trigger configuration.
+  // static void ApplyConfiguration( GENAPI_NAMESPACE::INodeMap& nodemap )
+  // {
+  //   using namespace GENAPI_NAMESPACE;
+
+  //   //Disable compression mode.
+  //   CConfigurationHelper::DisableCompression( nodemap );
+
+  //   //Disable GenDC streaming.
+  //   CConfigurationHelper::DisableGenDC( nodemap );
+
+  //   //Select image component.
+  //   CConfigurationHelper::SelectRangeComponent( nodemap );
+
+  //   // Disable all trigger types except the trigger type used for triggering the acquisition of
+  //   // frames.
+  //   {
+      
+
+  //     // Check the available camera trigger mode(s) to select the appropriate one: acquisition start trigger mode
+  //     // (used by older cameras, i.e. for cameras supporting only the legacy image acquisition control mode;
+  //     // do not confuse with acquisition start command) or frame start trigger mode
+  //     // (used by newer cameras, i.e. for cameras using the standard image acquisition control mode;
+  //     // equivalent to the acquisition start trigger mode in the legacy image acquisition control mode).
+  //     String_t triggerName( "FrameStart" );
+  //     if (!triggerSelector.CanSetValue( triggerName ))
+  //     {
+  //         triggerName = "AcquisitionStart";
+  //         if (!triggerSelector.CanSetValue( triggerName ))
+  //         {
+  //             throw RUNTIME_EXCEPTION( "Could not select trigger. Neither FrameStart nor AcquisitionStart is available." );
+  //         }
+  //     }
+
+  //     // Get all enumeration entries of trigger selector.
+  //     StringList_t triggerSelectorEntries;
+  //     triggerSelector.GetSettableValues( triggerSelectorEntries );
+
+  //     // Turn trigger mode off for all trigger selector entries except for the frame trigger given by triggerName.
+  //     for (StringList_t::const_iterator it = triggerSelectorEntries.begin(); it != triggerSelectorEntries.end(); ++it)
+  //     {
+  //         // Set trigger mode to off.
+  //         triggerSelector.SetValue( *it );
+  //         if (triggerName == *it)
+  //         {
+  //           // Activate trigger.
+  //           triggerMode.SetValue( "On" );
+
+  //           // The trigger source must be set to 'Software'.
+  //           // CEnumParameter( nodemap, "TriggerSource" ).SetValue( "Software" );
+
+  //           //// Alternative hardware trigger configuration:
+  //           //// This configuration can be copied and modified to create a hardware trigger configuration.
+  //           //// Remove setting the 'TriggerSource' to 'Software' (see above) and
+  //           //// use the commented lines as a starting point.
+  //           //// The camera user's manual contains more information about available configurations.
+  //           //// The Basler pylon Viewer tool can be used to test the selected settings first.
+
+  //           //// The trigger source must be set to the trigger input, e.g. 'Line1'.
+            
+
+  //           ////The trigger activation must be set to e.g. 'RisingEdge'.
+            
+  //         }
+  //         else
+  //         {
+  //           triggerMode.TrySetValue( "Off" );
+  //         }
+  //     }
+  //     // Finally select the frame trigger type (resp. acquisition start type
+  //     // for older cameras). Issuing a software trigger will now trigger
+  //     // the acquisition of a frame.
+  //     triggerSelector.SetValue( triggerName );
+  //   }
+
+
+  //   //Set acquisition mode to "continuous"
+  //   CEnumParameter( nodemap, "AcquisitionMode" ).SetValue( "Continuous" );
+  // }
+
+  //Set basic camera settings.
+  virtual void OnOpened(CInstantCamera & cam)
+  {
+    GenApi_3_1_Basler_pylon::INodeMap & nodemap = cam.GetNodeMap();
+    // Disable defect pixel correction
+    // CEnumParameter(nodemap, "BslDefectPixelCorrectionMode").SetValue("Off");
+
+    CEnumParameter(nodemap, "TriggerSelector").SetValue("FrameStart");
+    CEnumParameter(nodemap, "TriggerMode").SetValue("On");
+    CEnumParameter(nodemap, "TriggerSource").SetValue("Line4");
+    CEnumParameter(nodemap, "TriggerActivation").SetValue("AnyEdge");
+    // try
+    // {
+    //   ApplyConfiguration( camera.GetNodeMap() );
+    // }
+    // catch (const GenericException& e)
+    // {
+    //   throw RUNTIME_EXCEPTION( "Could not apply configuration. Pylon::GenericException caught in OnOpened method msg=%hs", e.what() );
+    // }
+    // catch (const std::exception& e)
+    // {
+    //   throw RUNTIME_EXCEPTION( "Could not apply configuration. std::exception caught in OnOpened method msg=%hs", e.what() );
+    // }
+    // catch (...)
+    // {
+    //   throw RUNTIME_EXCEPTION( "Could not apply configuration. Unknown exception caught in OnOpened method." );
+    // }
+  }
+};
+
 CameraPylon::CameraPylon(const rclcpp::NodeOptions & options)
 : Node("camera_pylon_node", options)
 {
@@ -226,14 +339,14 @@ CameraPylon::CameraPylon(const rclcpp::NodeOptions & options)
   di.SetSerialNumber(sn.c_str());
   di.SetDeviceClass(BaslerUsbDeviceClass);
   cam.Attach(TlFactory.CreateDevice(di));
-  cam.Open();
-  GenApi_3_1_Basler_pylon::INodeMap & nodemap = cam.GetNodeMap();
-  // Disable defect pixel correction
-  CEnumParameter(nodemap, "BslDefectPixelCorrectionMode").SetValue("Off");
+  
   cam.RegisterImageEventHandler(
     new CImageEventPrinter(this),
     RegistrationMode_Append,
-    Cleanup_Delete);
+    Cleanup_Delete
+  );
+  cam.RegisterConfiguration(new CHardwareTriggerConfiguration, RegistrationMode_ReplaceAll, Cleanup_Delete);
+  cam.Open();
   _pub = this->create_publisher<PointCloud2>(_pub_name, rclcpp::SensorDataQoS());
 
   _srv_start = this->create_service<Trigger>(
@@ -259,6 +372,11 @@ CameraPylon::CameraPylon(const rclcpp::NodeOptions & options)
       if (cam.IsGrabbing()) {
         cam.StopGrabbing();
       }
+      std::promise<PointCloud2::UniquePtr> prom;
+      _push_back_future(prom.get_future());
+      auto line = std::make_unique<PointCloud2>();
+      line->header.frame_id = "-1";
+      prom.set_value(std::move(line));
     }
   );
 

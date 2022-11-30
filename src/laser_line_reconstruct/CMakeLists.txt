@@ -20,9 +20,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(sensor_msgs REQUIRED)
-find_package(shared_interfaces REQUIRED)
 find_package(OpenCV REQUIRED)
-find_package(PCL 1.3 REQUIRED COMPONENTS common)
 
 add_library(laser_line_reconstruct SHARED src/laser_line_reconstruct.cpp)
 
@@ -36,7 +34,6 @@ ament_target_dependencies(laser_line_reconstruct
   rclcpp
   rclcpp_components
   sensor_msgs
-  shared_interfaces
 )
 
 if(opencv_world IN_LIST OpenCV_LIBS)
@@ -44,11 +41,6 @@ if(opencv_world IN_LIST OpenCV_LIBS)
 else()
   target_link_libraries(laser_line_reconstruct ${OpenCV_LIBS})
 endif()
-
-include_directories(${PCL_INCLUDE_DIRS})
-link_directories(${PCL_LIBRARY_DIRS})
-add_definitions(${PCL_DEFINITIONS})
-target_link_libraries(laser_line_reconstruct ${PCL_LIBRARIES})
 
 rclcpp_components_register_node(laser_line_reconstruct
   PLUGIN "laser_line_reconstruct::LaserLineReconstruct"

@@ -20,7 +20,6 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/point_cloud2.hpp"
-#include "shared_interfaces/msg/line_center.hpp"
 
 namespace laser_line_reconstruct
 {
@@ -47,8 +46,8 @@ private:
   const char * _subRName = "~/line_r";
   rclcpp::CallbackGroup::SharedPtr _cbgL;
   rclcpp::CallbackGroup::SharedPtr _cbgR;
-  rclcpp::Subscription<shared_interfaces::msg::LineCenter>::SharedPtr _subL;
-  rclcpp::Subscription<shared_interfaces::msg::LineCenter>::SharedPtr _subR;
+  rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr _subL;
+  rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr _subR;
 };
 
 }  // namespace laser_line_reconstruct

@@ -21,14 +21,96 @@
 #include <utility>
 #include <vector>
 
-#include "pcl_conversions/pcl_conversions.h"
 #include "opencv2/opencv.hpp"
 
 namespace laser_line_reconstruct
 {
 
-using shared_interfaces::msg::LineCenter;
 using sensor_msgs::msg::PointCloud2;
+
+/**
+ * @brief Construct ROS point cloud message from vector of floats.
+ *
+ * @param pnts A sequence of floats as points' row coordinate.
+ * @return PointCloud2::UniquePtr Point cloud message to publish.
+ */
+PointCloud2::UniquePtr to_pc2(const std::vector<float> & pnts)
+{
+  auto ptr = std::make_unique<PointCloud2>();
+  if (pnts.empty()) {return ptr;}
+
+  auto num = pnts.size();
+
+  ptr->height = 1;
+  ptr->width = num;
+
+  ptr->fields.resize(1);
+
+  ptr->fields[0].name = "u";
+  ptr->fields[0].offset = 0;
+  ptr->fields[0].datatype = 7;
+  ptr->fields[0].count = 1;
+
+  ptr->is_bigendian = false;
+  ptr->point_step = 4;
+  ptr->row_step = num * 4;
+
+  ptr->data.resize(num * 4);
+
+  ptr->is_dense = true;
+
+  memcpy(ptr->data.data(), pnts.data(), num * 4);
+
+  return ptr;
+}
+
+PointCloud2::UniquePtr to_pc2(const std::vector<cv::Point3f> & pnts)
+{
+  if (pnts.empty()) {return nullptr;}
+  
+  auto ptr = std::make_unique<PointCloud2>();
+  auto num = pnts.size();
+
+  ptr->height = 1;
+  ptr->width = num;
+
+  ptr->fields.resize(3);
+
+  ptr->fields[0].name = "x";
+  ptr->fields[0].offset = 0;
+  ptr->fields[0].datatype = 7;
+  ptr->fields[0].count = 1;
+
+  ptr->fields[1].name = "y";
+  ptr->fields[1].offset = 4;
+  ptr->fields[1].datatype = 7;
+  ptr->fields[1].count = 1;
+
+  ptr->fields[2].name = "z";
+  ptr->fields[2].offset = 8;
+  ptr->fields[2].datatype = 7;
+  ptr->fields[2].count = 1;
+
+  ptr->is_bigendian = false;
+  ptr->point_step = 4 * 3;
+  ptr->row_step = 12 * num;
+
+  ptr->data.resize(12 * num);
+
+  ptr->is_dense = true;
+
+  memcpy(ptr->data.data(), pnts.data(), 12 * num);
+
+  return ptr;
+}
+
+std::vector<float> from_pc2(const PointCloud2::UniquePtr & ptr)
+{
+  auto num = ptr->width;
+  std::vector<float> ret(num);
+  memcpy(ret.data(), ptr->data.data(), num * 4);
+  return ret;
+}
 
 class LaserLineReconstruct::_Impl
 {
@@ -74,7 +156,7 @@ public:
     _thread.join();
   }
 
-  void PushBackL(LineCenter::UniquePtr ptr)
+  void PushBackL(PointCloud2::UniquePtr ptr)
   {
     std::unique_lock<std::mutex> lk(_mutex);
     _deqL.emplace_back(std::move(ptr));
@@ -82,7 +164,7 @@ public:
     _con.notify_all();
   }
 
-  void PushBackR(LineCenter::UniquePtr ptr)
+  void PushBackR(PointCloud2::UniquePtr ptr)
   {
     std::unique_lock<std::mutex> lk(_mutex);
     _deqR.emplace_back(std::move(ptr));
@@ -92,11 +174,11 @@ public:
 
 private:
   PointCloud2::UniquePtr _Execute(
-    const LineCenter::UniquePtr & ptrL,
-    const LineCenter::UniquePtr & ptrR)
+    const PointCloud2::UniquePtr & ptrL,
+    const PointCloud2::UniquePtr & ptrR)
   {
-    const auto & centerL = ptrL->center;
-    const auto & centerR = ptrR->center;
+    const auto & centerL = from_pc2(ptrL);
+    const auto & centerR = from_pc2(ptrR);
 
     _pL.clear();
     _pR.clear();
@@ -153,31 +235,34 @@ private:
     if (_pnts.empty()) {
       return nullptr;
     } else {
-      std::vector<cv::Point3f> temp;
-      for (size_t i = 0; i < _pnts.size(); i += 10) {
-        temp.push_back(_pnts[i]);
-      }
+      // std::vector<cv::Point3f> temp;
+      // for (size_t i = 0; i < _pnts.size(); i += 10) {
+      //   temp.push_back(_pnts[i]);
+      // }
 
-      std::swap(temp, _pnts);
+      // std::swap(temp, _pnts);
       cv::perspectiveTransform(_pnts, _pnts, _q);
 
-      pcl::PointCloud<pcl::PointXYZI> cloud;
-      cloud.height = 1;
-      cloud.width = _pnts.size();
-      cloud.points.resize(_pnts.size());
+      auto ret = to_pc2(_pnts);
+      ret->header = ptrL->header;
+      return ret;
+      // pcl::PointCloud<pcl::PointXYZI> cloud;
+      // cloud.height = 1;
+      // cloud.width = _pnts.size();
+      // cloud.points.resize(_pnts.size());
 
-      for (size_t i = 0; i < _pnts.size(); ++i) {
-        cloud[i].x = _pnts[i].x;
-        cloud[i].y = _pnts[i].z;
-        cloud[i].z = -_pnts[i].y;
-        cloud[i].intensity = _uv[i].y;
-      }
+      // for (size_t i = 0; i < _pnts.size(); ++i) {
+      //   cloud[i].x = _pnts[i].x;
+      //   cloud[i].y = _pnts[i].z;
+      //   cloud[i].z = -_pnts[i].y;
+      //   cloud[i].intensity = _uv[i].y;
+      // }
 
-      auto ptr = std::make_unique<PointCloud2>();
-      pcl::toROSMsg(cloud, *ptr);
-      ptr->header.stamp = ptrL->header.stamp;
-      ptr->header.frame_id = _frameID;
-      return ptr;
+      // auto ptr = std::make_unique<PointCloud2>();
+      // pcl::toROSMsg(cloud, *ptr);
+      // ptr->header.stamp = ptrL->header.stamp;
+      // ptr->header.frame_id = _frameID;
+      // return ptr;
     }
   }
 
@@ -186,8 +271,8 @@ private:
     while (rclcpp::ok()) {
       std::unique_lock<std::mutex> lk(_mutex);
 
-      LineCenter::UniquePtr pL = nullptr;
-      LineCenter::UniquePtr pR = nullptr;
+      PointCloud2::UniquePtr pL = nullptr;
+      PointCloud2::UniquePtr pR = nullptr;
       if (_Pair(pL, pR)) {
         lk.unlock();
         if (pL->header.frame_id == "-1") {
@@ -203,8 +288,8 @@ private:
   }
 
   void _PopFront(
-    LineCenter::UniquePtr & pL,
-    LineCenter::UniquePtr & pR)
+    PointCloud2::UniquePtr & pL,
+    PointCloud2::UniquePtr & pR)
   {
     pL = std::move(_deqL.front());
     pR = std::move(_deqR.front());
@@ -213,8 +298,8 @@ private:
   }
 
   bool _Pair(
-    LineCenter::UniquePtr & pL,
-    LineCenter::UniquePtr & pR)
+    PointCloud2::UniquePtr & pL,
+    PointCloud2::UniquePtr & pR)
   {
     if (_deqL.empty() || _deqR.empty()) {return false;}
 
@@ -224,27 +309,34 @@ private:
     if (idL == idR) {
       _PopFront(pL, pR);
       return true;
-    } else if (idL > idR) {
-      for (auto iter = _deqR.begin(); iter != _deqR.end(); ++iter) {
-        if (idL == std::stoi((*iter)->header.frame_id)) {
-          _deqR.erase(_deqR.begin(), iter);
-          _PopFront(pL, pR);
-          return true;
-        }
-      }
-      _deqR.clear();
-      return false;
     } else {
-      for (auto iter = _deqL.begin(); iter != _deqL.end(); ++iter) {
-        if (idR == std::stoi((*iter)->header.frame_id)) {
-          _deqL.erase(_deqL.begin(), iter);
-          _PopFront(pL, pR);
-          return true;
-        }
-      }
-      _deqL.clear();
-      return false;
+      RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "%i, %i", idL, idR);
+      throw std::runtime_error("Mismatch");
     }
+    // if (idL == idR) {
+    //   _PopFront(pL, pR);
+    //   return true;
+    // } else if (idL > idR) {
+    //   for (auto iter = _deqR.begin(); iter != _deqR.end(); ++iter) {
+    //     if (idL == std::stoi((*iter)->header.frame_id)) {
+    //       _deqR.erase(_deqR.begin(), iter);
+    //       _PopFront(pL, pR);
+    //       return true;
+    //     }
+    //   }
+    //   _deqR.clear();
+    //   return false;
+    // } else {
+    //   for (auto iter = _deqL.begin(); iter != _deqL.end(); ++iter) {
+    //     if (idR == std::stoi((*iter)->header.frame_id)) {
+    //       _deqL.erase(_deqL.begin(), iter);
+    //       _PopFront(pL, pR);
+    //       return true;
+    //     }
+    //   }
+    //   _deqL.clear();
+    //   return false;
+    // }
   }
 
   float _InterpolateX(const cv::Point2f & p0, const cv::Point2f & p1, float y)
@@ -254,17 +346,17 @@ private:
 
   void _InitializeParameters()
   {
-    _node->declare_parameter("frame_id");
+    _node->declare_parameter("frame_id", std::string());
 
-    _node->declare_parameter("camera_matrix_l");
-    _node->declare_parameter("camera_matrix_r");
-    _node->declare_parameter("dist_coeffs_l");
-    _node->declare_parameter("dist_coeffs_r");
-    _node->declare_parameter("rect_l");
-    _node->declare_parameter("rect_r");
-    _node->declare_parameter("proj_l");
-    _node->declare_parameter("proj_r");
-    _node->declare_parameter("q");
+    _node->declare_parameter("camera_matrix_l", std::vector<double>());
+    _node->declare_parameter("camera_matrix_r", std::vector<double>());
+    _node->declare_parameter("dist_coeffs_l", std::vector<double>());
+    _node->declare_parameter("dist_coeffs_r", std::vector<double>());
+    _node->declare_parameter("rect_l", std::vector<double>());
+    _node->declare_parameter("rect_r", std::vector<double>());
+    _node->declare_parameter("proj_l", std::vector<double>());
+    _node->declare_parameter("proj_r", std::vector<double>());
+    _node->declare_parameter("q", std::vector<double>());
   }
 
   void _UpdateParameters()
@@ -288,8 +380,8 @@ private:
   LaserLineReconstruct * _node;
   std::mutex _mutex;              ///< Mutex to protect shared storage
   std::condition_variable _con;   ///< Conditional variable rely on mutex
-  std::deque<LineCenter::UniquePtr> _deqL;
-  std::deque<LineCenter::UniquePtr> _deqR;
+  std::deque<PointCloud2::UniquePtr> _deqL;
+  std::deque<PointCloud2::UniquePtr> _deqR;
   std::thread _thread;
 };
 
@@ -300,13 +392,13 @@ LaserLineReconstruct::LaserLineReconstruct(const rclcpp::NodeOptions & options)
 
   _impl = std::make_unique<_Impl>(this);
 
-  _cbgL = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
-  auto subL_opt = rclcpp::SubscriptionOptions();
-  subL_opt.callback_group = _cbgL;
-  _subL = this->create_subscription<LineCenter>(
+  // _cbgL = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+  // auto subL_opt = rclcpp::SubscriptionOptions();
+  // subL_opt.callback_group = _cbgL;
+  _subL = this->create_subscription<PointCloud2>(
     _subLName,
-    50,
-    [this](LineCenter::UniquePtr ptr)
+    rclcpp::SensorDataQoS(),
+    [this](PointCloud2::UniquePtr ptr)
     {
       try {
         _impl->PushBackL(std::move(ptr));
@@ -315,17 +407,16 @@ LaserLineReconstruct::LaserLineReconstruct(const rclcpp::NodeOptions & options)
       } catch (...) {
         RCLCPP_WARN(this->get_logger(), "Exception in subscription: unknown");
       }
-    },
-    subL_opt
+    }
   );
 
-  _cbgR = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
-  auto subR_opt = rclcpp::SubscriptionOptions();
-  subR_opt.callback_group = _cbgR;
-  _subR = this->create_subscription<LineCenter>(
+  // _cbgR = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+  // auto subR_opt = rclcpp::SubscriptionOptions();
+  // subR_opt.callback_group = _cbgR;
+  _subR = this->create_subscription<PointCloud2>(
     _subRName,
-    50,
-    [this](LineCenter::UniquePtr ptr)
+    rclcpp::SensorDataQoS(),
+    [this](PointCloud2::UniquePtr ptr)
     {
       try {
         _impl->PushBackR(std::move(ptr));
@@ -334,8 +425,7 @@ LaserLineReconstruct::LaserLineReconstruct(const rclcpp::NodeOptions & options)
       } catch (...) {
         RCLCPP_WARN(this->get_logger(), "Exception in subscription: unknown");
       }
-    },
-    subR_opt
+    }
   );
 
   RCLCPP_INFO(this->get_logger(), "Initialized successfully");

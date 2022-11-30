@@ -60,7 +60,9 @@ private:
    * @param f true to power on laser.
    * @return int 0 if success.
    */
-  int _laser(bool f);
+  void _laser(bool f);
+
+  void _trigger(bool f);
 
   void _callback();
 

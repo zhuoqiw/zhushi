@@ -37,7 +37,8 @@ def generate_launch_description():
     configFile = os.path.join(
         get_package_share_directory('camera_pylon'),
         'config',
-        'params.yaml')
+        'params.yaml'
+    )
 
     with open(configFile, 'r') as file:
         params = yaml.safe_load(file)['camera_pylon_node']['ros__parameters']
@@ -48,7 +49,8 @@ def generate_launch_description():
         package='camera_pylon',
         executable='camera_pylon_node',
         name='camera_pylon_node_l',
-        parameters=[params])
+        parameters=[params]
+    )
 
     params['workers'] = 2
     params['serial'] = '40146429'
@@ -56,13 +58,15 @@ def generate_launch_description():
         package='camera_pylon',
         executable='camera_pylon_node',
         name='camera_pylon_node_r',
-        parameters=[params])
+        parameters=[params]
+    )
 
     """Generate launch description with a component."""
     configFile = os.path.join(
         get_package_share_directory('gpio_raspberry'),
         'config',
-        'params.yaml')
+        'params.yaml'
+    )
 
     with open(configFile, 'r') as file:
         params = yaml.safe_load(file)['gpio_raspberry_node']['ros__parameters']
@@ -76,7 +80,8 @@ def generate_launch_description():
     configFile = os.path.join(
         get_package_share_directory('motor_encoder'),
         'config',
-        'params.yaml')
+        'params.yaml'
+    )
 
     with open(configFile, 'r') as file:
         params = yaml.safe_load(file)['motor_encoder_node']['ros__parameters']
@@ -84,6 +89,23 @@ def generate_launch_description():
     motor_encoder_node = Node(
         package='motor_encoder',
         executable='motor_encoder_node',
+    )
+
+    """Generate launch description with a component."""
+    configFile = os.path.join(
+        get_package_share_directory('laser_line_reconstruct'),
+        'config',
+        'params.yaml'
+    )
+    
+    with open(configFile, 'r') as file:
+        params = yaml.safe_load(file)['laser_line_reconstruct_node']['ros__parameters']
+    
+    laser_line_reconstruct_node = Node(
+        package='laser_line_reconstruct',
+        executable='laser_line_reconstruct_node',
+        remappings = [('~/line_l', '/camera_pylon_node_l/line'), ('~/line_r', '/camera_pylon_node_r/line')],
+        parameters=[params]
     )
     # container = ComposableNodeContainer(
     #     name='pipeline_container',
@@ -122,5 +144,7 @@ def generate_launch_description():
     return launch.LaunchDescription([
         camera_pylon_node_l,
         camera_pylon_node_r,
+        laser_line_reconstruct_node,
         gpio_raspberry_node,
-        motor_encoder_node])
+        motor_encoder_node]
+    )

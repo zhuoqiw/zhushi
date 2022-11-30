@@ -11,6 +11,7 @@
 
   <depend>rclcpp</depend>
   <depend>camera_pylon</depend>
+  <depend>laser_line_reconstruct</depend>
   <depend>gpio_raspberry</depend>
   <depend>motor_encoder</depend>
 
