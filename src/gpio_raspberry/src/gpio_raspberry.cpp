@@ -74,15 +74,16 @@ GpioRaspberry::~GpioRaspberry()
 
 int GpioRaspberry::_laser(bool f)
 {
-  if (f) {
-    if (_timer->is_canceled()) {
-      _timer->reset();
-    }
-  } else {
-    if (_timer->is_canceled() == false) {
-      _timer->cancel();
-    }
-  }
+  gpiod_line_set_value(_line_4.get(), f);
+  // if (f) {
+  //   if (_timer->is_canceled()) {
+  //     _timer->reset();
+  //   }
+  // } else {
+  //   if (_timer->is_canceled() == false) {
+  //     _timer->cancel();
+  //   }
+  // }
 
   return 0;
 }

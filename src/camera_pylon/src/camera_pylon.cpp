@@ -33,13 +33,13 @@ using sensor_msgs::msg::PointCloud2;
 
 /**
  * @brief Basler time stamp, ticks per second.
- * 
+ *
  */
 constexpr int TICKS_PER_SEC = 1000000000;
 
 /**
  * @brief Basler image buffer number.
- * 
+ *
  */
 constexpr int BUFFER_NUMBER = 10;
 
