@@ -159,11 +159,27 @@ def generate_launch_description():
     #     executable='config_tis_node',
     #     on_exit=launch.actions.Shutdown())
 
+    """Generate launch description with a component."""
+    configFile = os.path.join(
+        get_package_share_directory('seam_tracking'),
+        'config',
+        'params.yaml'
+    )
+    
+    with open(configFile, 'r') as file:
+        params = yaml.safe_load(file)['seam_tracking_node']['ros__parameters']
+
+    seam_tracking_node = Node(
+        package='seam_tracking',
+        executable='seam_tracking_node',
+        parameters=[params])
+
     return launch.LaunchDescription([
         camera_pylon_node_l,
         camera_pylon_node_r,
         laser_line_reconstruct_node,
         point_cloud_collect_node,
         gpio_raspberry_node,
-        motor_encoder_node]
+        motor_encoder_node,
+        seam_tracking_node]
     )
