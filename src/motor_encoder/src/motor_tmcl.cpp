@@ -24,7 +24,7 @@ namespace motor_tmcl
 #define MOTOR_DIRECTION_FLAG  (1)    //1或-1
 #define MOTOR_POS_ZERO2  ((4600 + MOTOR_INIT_OFFSET)*motor_direction_flag) //3200
 #define MOTOR_POS_CENTER ((6400 + MOTOR_INIT_OFFSET)*motor_direction_flag)
-#define MOTOR_POS_END    ((8000 + MOTOR_INIT_OFFSET)*motor_direction_flag) //9600
+#define MOTOR_POS_END    ((9600 + MOTOR_INIT_OFFSET)*motor_direction_flag) //9600
 #define MOTOR_POS_INIT   4600 //1100
 
 //Opcodes of all TMCL commands that can be used in direct mode

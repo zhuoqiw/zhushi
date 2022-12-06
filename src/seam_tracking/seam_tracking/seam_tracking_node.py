@@ -73,13 +73,13 @@ class SeamTracking(Node):
         self.cli1.call_async(t)
         self.cli2.call_async(t)
         self.cli3.call_async(t)
-        time.sleep(5)
+        time.sleep(2)
         r = SetParameters.Request()
         v = ParameterValue(type=ParameterType.PARAMETER_BOOL, bool_value=True)
         r.parameters = [Parameter(name='laser', value=v), Parameter(name='trigger', value=v)]
         self.cli5.call_async(r)
         self.cli4.call_async(t)
-        time.sleep(5)
+        time.sleep(8)
         v = ParameterValue(type=ParameterType.PARAMETER_BOOL, bool_value=False)
         r.parameters = [Parameter(name='laser', value=v), Parameter(name='trigger', value=v)]
 
