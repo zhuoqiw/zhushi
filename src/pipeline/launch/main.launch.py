@@ -107,6 +107,24 @@ def generate_launch_description():
         remappings = [('~/line_l', '/camera_pylon_node_l/line'), ('~/line_r', '/camera_pylon_node_r/line')],
         parameters=[params]
     )
+
+    """Generate launch description with a component."""
+    configFile = os.path.join(
+        get_package_share_directory('point_cloud_collect'),
+        'config',
+        'params.yaml'
+    )
+    
+    with open(configFile, 'r') as file:
+        params = yaml.safe_load(file)['point_cloud_collect_node']['ros__parameters']
+    
+    point_cloud_collect_node = Node(
+        package='point_cloud_collect',
+        executable='point_cloud_collect_node',
+        remappings = [('~/line', '/laser_line_reconstruct_node/line')],
+        parameters=[params]
+    )
+
     # container = ComposableNodeContainer(
     #     name='pipeline_container',
     #     namespace='',
@@ -145,6 +163,7 @@ def generate_launch_description():
         camera_pylon_node_l,
         camera_pylon_node_r,
         laser_line_reconstruct_node,
+        point_cloud_collect_node,
         gpio_raspberry_node,
         motor_encoder_node]
     )

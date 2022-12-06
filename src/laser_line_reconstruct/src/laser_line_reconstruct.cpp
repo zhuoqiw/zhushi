@@ -187,13 +187,13 @@ private:
 
     for (size_t i = 0; i < centerL.size(); ++i) {
       if (centerL[i] >= 0) {
-        _pL.emplace_back(centerL[i], i);
+        _pL.emplace_back(centerL[i], i * 2.);
       }
     }
 
     for (size_t i = 0; i < centerR.size(); ++i) {
       if (centerR[i] >= 0) {
-        _pR.emplace_back(centerR[i], i);
+        _pR.emplace_back(centerR[i], i * 2.);
       }
     }
 

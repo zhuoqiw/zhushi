@@ -53,7 +53,7 @@ GpioRaspberry::GpioRaspberry(const rclcpp::NodeOptions & options)
       return result;
     });
 
-  _timer = this->create_wall_timer(15ms, [this]() {_callback();});
+  _timer = this->create_wall_timer(16ms, [this]() {_callback();});
   _timer->cancel();
 
   RCLCPP_INFO(this->get_logger(), "Initialized successfully");
@@ -77,6 +77,9 @@ void GpioRaspberry::_laser(bool f)
 
 void GpioRaspberry::_trigger(bool f)
 {
+  // static bool b = false;
+  // gpiod_line_set_value(_line_17.get(), b);
+  // b = !b;
   if (f) {
     if (_timer->is_canceled()) {
       _timer->reset();

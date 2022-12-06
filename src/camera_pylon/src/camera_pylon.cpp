@@ -200,7 +200,7 @@ public:
     if (ptrGrabResult->GrabSucceeded()) {
       _ptr->_push_back_image(ptrGrabResult);
     } else {
-      // RCLCPP_WARN(this->get_logger(), "Image broken");
+      RCLCPP_WARN(rclcpp::get_logger("rclcpp"), "Image broken");
     }
   }
 
@@ -294,9 +294,37 @@ public:
   //Set basic camera settings.
   virtual void OnOpened(CInstantCamera & cam)
   {
-    GenApi_3_1_Basler_pylon::INodeMap & nodemap = cam.GetNodeMap();
-    // Disable defect pixel correction
-    // CEnumParameter(nodemap, "BslDefectPixelCorrectionMode").SetValue("Off");
+    auto & nodemap = cam.GetNodeMap();
+    CBooleanParameter(nodemap, "AcquisitionFrameRateEnable").SetValue(false);
+    CEnumParameter(nodemap, "DeviceLinkThroughputLimitMode").SetValue("Off");
+
+    CFloatParameter(nodemap, "ExposureTime").SetValue(10000.);
+
+    CIntegerParameter(nodemap, "BinningHorizontal").SetValue(1);
+    CIntegerParameter(nodemap, "BinningVertical").SetValue(2);
+
+    CIntegerParameter(nodemap, "Width").SetValue(1280);
+    CIntegerParameter(nodemap, "Height").SetValue(512);
+    CIntegerParameter(nodemap, "OffsetX").SetValue(328);
+    CIntegerParameter(nodemap, "OffsetY").SetValue(48);
+    
+    // auto & streamer = cam.GetStreamGrabberNodeMap();
+
+    // CIntegerParameter(streamer, "MaxNumBuffer").SetValue(60);
+    // CIntegerParameter(streamer, "MaxBufferSize").SetValue(1280 * 960);
+    // CIntegerParameter(streamer, "MaxTransferSize").SetValue(1280 * 960);
+    // CIntegerParameter(streamer, "NumMaxQueuedUrbs").SetValue(256);
+
+    // auto maxNumBuffer = CIntegerParameter(streamer, "MaxNumBuffer").GetValue();
+    // auto maxBufferSize = CIntegerParameter(streamer, "MaxBufferSize").GetValue();
+    // auto maxTransferSize = CIntegerParameter(streamer, "MaxTransferSize").GetValue();
+
+    // auto fps = CFloatParameter(nodemap, "ResultingFrameRate").GetValue();
+    // auto band = CIntegerParameter(nodemap, "BslDeviceLinkCurrentThroughput").GetValue();
+    // RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "fps: %f\nband: %i\nmax num buffer: %i\nmax buffer size: %i\nmax transfer size: %i", fps, band, maxNumBuffer, maxBufferSize, maxTransferSize);
+    // GenApi_3_1_Basler_pylon::INodeMap & nodemap = cam.GetNodeMap();
+    // // Disable defect pixel correction
+    // // CEnumParameter(nodemap, "BslDefectPixelCorrectionMode").SetValue("Off");
 
     CEnumParameter(nodemap, "TriggerSelector").SetValue("FrameStart");
     CEnumParameter(nodemap, "TriggerMode").SetValue("On");
@@ -357,7 +385,22 @@ CameraPylon::CameraPylon(const rclcpp::NodeOptions & options)
     {
       response->success = true;
       if (!cam.IsGrabbing()) {
+        RCLCPP_INFO(this->get_logger(), "Start grabbing successfully");
         cam.StartGrabbing(GrabStrategy_OneByOne, GrabLoop_ProvidedByInstantCamera);
+        // cam.StartGrabbing();
+
+        // std::thread([&]()
+        // {
+        //   CGrabResultPtr ptrGrabResult;
+        //   while (cam.IsGrabbing()) {
+        //     cam.RetrieveResult( 60000, ptrGrabResult, TimeoutHandling_ThrowException );
+        //     if (ptrGrabResult->GrabSucceeded()) {
+        //       RCLCPP_WARN(this->get_logger(), "%i", ptrGrabResult->GetImageNumber());
+        //     } else {
+        //       // RCLCPP_WARN(this->get_logger(), "Image broken");
+        //     }
+        //   }
+        // }).detach();
       }
     }
   );
